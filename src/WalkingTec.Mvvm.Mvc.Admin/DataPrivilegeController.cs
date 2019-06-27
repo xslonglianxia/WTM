@@ -1,17 +1,22 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
 using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Core.Extensions;
 using WalkingTec.Mvvm.Mvc;
 using WalkingTec.Mvvm.Mvc.Admin.ViewModels.DataPrivilegeVMs;
+using WalkingTec.Mvvm.Mvc.Auth;
 
 namespace WalkingTec.Mvvm.Admin.Api
 {
     [ActionDescription("数据权限")]
     [ApiController]
-    [Route("api/_DataPrivilege")]
+    [Route("api/_[controller]")]
+    [WTMAuthorize]
     public class DataPrivilegeController : BaseApiController
     {
         [ActionDescription("搜索")]

@@ -1,10 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System;
+﻿using System;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
 using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Mvc;
+using WalkingTec.Mvvm.Mvc.Auth;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -13,6 +17,7 @@ namespace WalkingTec.Mvvm.Admin.Api
     [ApiController]
     [Route("api/_file")]
     [AllRights]
+    [WTMAuthorize]
     public class FileApiController : BaseApiController
     {
         [HttpPost("upload")]

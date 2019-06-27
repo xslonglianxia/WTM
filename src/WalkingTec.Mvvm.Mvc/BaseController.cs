@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
 using System;
@@ -10,7 +12,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Web;
 using WalkingTec.Mvvm.Core;
+using WalkingTec.Mvvm.Core.Extensions;
 
 namespace WalkingTec.Mvvm.Mvc
 {
@@ -66,14 +70,14 @@ namespace WalkingTec.Mvvm.Mvc
             }
         }
 
-        private IMemoryCache _cache;
-        protected IMemoryCache Cache
+        private IDistributedCache _cache;
+        public IDistributedCache Cache
         {
             get
             {
                 if (_cache == null)
                 {
-                    _cache = (IMemoryCache)HttpContext.RequestServices.GetService(typeof(IMemoryCache));
+                    _cache = (IDistributedCache)HttpContext.RequestServices.GetService(typeof(IDistributedCache));
                 }
                 return _cache;
             }
@@ -178,15 +182,66 @@ namespace WalkingTec.Mvvm.Mvc
         #endregion
 
         #region 当前用户（属性）
+        private LoginUserInfo _loginUserInfo;
         public LoginUserInfo LoginUserInfo
         {
             get
             {
-                return HttpContext.Session?.Get<LoginUserInfo>("UserInfo");
+                if (User.Identity.IsAuthenticated && _loginUserInfo == null) // 用户 token 未过期，服务端重启后丢失用户登录信息，需要重新获取
+                {
+                    var userIdStr = User.Claims.SingleOrDefault(x => x.Type == "id")?.Value;
+                    Guid userId = Guid.Parse(userIdStr);
+                    _loginUserInfo = Cache.Get<LoginUserInfo>($"UserInfo:{userId.ToString()}");
+                    if (_loginUserInfo == null || _loginUserInfo.Id != userId)
+                    {
+                        var userInfo = DC.Set<FrameworkUserBase>()
+                                            .Include(x => x.UserRoles)
+                                            .Include(x => x.UserGroups)
+                                            .Where(x => x.ID == userId)
+                                            .SingleOrDefault();
+                        if (userInfo != null)
+                        {
+                            // 初始化用户信息
+                            var groupIDs = userInfo.UserGroups.Select(x => x.GroupId).ToList();
+                            var dpris = DC.Set<DataPrivilege>()
+                                            .Where(x => x.UserId == userInfo.ID || (x.GroupId != null && groupIDs.Contains(x.GroupId.Value)))
+                                            .ToList();
+                            _loginUserInfo = new LoginUserInfo
+                            {
+                                Id = userInfo.ID,
+                                ITCode = userInfo.ITCode,
+                                Name = userInfo.Name,
+                                PhotoId = userInfo.PhotoId,
+                                Roles = DC.Set<FrameworkRole>().Where(x => userInfo.UserRoles.Select(y => y.RoleId).Contains(x.ID)).ToList(),
+                                Groups = DC.Set<FrameworkGroup>().Where(x => userInfo.UserGroups.Select(y => y.GroupId).Contains(x.ID)).ToList(),
+                                DataPrivileges = dpris
+                            };
+                        }
+                        else
+                        {
+                            // 登录失败
+                            HttpContext.Response.Cookies.Delete($"{ConfigInfo.CookiePre}.access_token");
+                            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                            HttpContext.Response.ContentType = "text/html";
+                            HttpContext.Response.WriteAsync($"<script>window.location.href = '/Login/Login?rd={HttpUtility.UrlEncode(HttpContext.Request.Path)}'</script>").Wait();
+                        }
+                    }
+                }
+                return _loginUserInfo;
             }
             set
             {
-                HttpContext.Session?.Set<LoginUserInfo>("UserInfo", value);
+                if (value == null)
+                {
+                    Cache.Add($"UserInfo:{_loginUserInfo.Id}", value);
+                    _loginUserInfo = value;
+                    HttpContext.Response.Cookies.Delete($"{ConfigInfo.CookiePre}.access_token");
+                }
+                else
+                {
+                    _loginUserInfo = value;
+                    Cache.Add($"UserInfo:{_loginUserInfo.Id}", value);
+                }
             }
         }
         #endregion
@@ -241,6 +296,8 @@ namespace WalkingTec.Mvvm.Mvc
             }
             catch { }
             rv.ConfigInfo = ConfigInfo;
+            rv.Cache = Cache;
+            rv.LoginUserInfo = LoginUserInfo;
             rv.DataContextCI = GlobaInfo?.DataContextCI;
             rv.DC = this.DC;
             rv.MSD = new ModelStateServiceProvider(ModelState);
@@ -256,14 +313,11 @@ namespace WalkingTec.Mvvm.Mvc
             {
                 try
                 {
-                    if (Request.QueryString != null)
+                    foreach (var key in Request.Query.Keys)
                     {
-                        foreach (var key in Request.Query.Keys)
+                        if (rv.FC.Keys.Contains(key) == false)
                         {
-                            if (rv.FC.Keys.Contains(key) == false)
-                            {
-                                rv.FC.Add(key, Request.Query[key]);
-                            }
+                            rv.FC.Add(key, Request.Query[key]);
                         }
                     }
                     var f = HttpContext.Request.Form;
@@ -485,18 +539,21 @@ namespace WalkingTec.Mvvm.Mvc
         }
         #endregion
 
-        protected T ReadFromCache<T>(string key, Func<T> setFunc,int? timeout = null)
+        protected T ReadFromCache<T>(string key, Func<T> setFunc, int? timeout = null)
         {
             if (Cache.TryGetValue(key, out T rv) == false)
             {
                 T data = setFunc();
                 if (timeout == null)
                 {
-                    Cache.Set(key, data);
+                    Cache.Add(key, data);
                 }
                 else
                 {
-                    Cache.Set(key, data, DateTime.Now.AddSeconds(timeout.Value).Subtract(DateTime.Now));
+                    Cache.Add(key, data, new DistributedCacheEntryOptions()
+                    {
+                        SlidingExpiration = new TimeSpan(timeout.Value)
+                    });
                 }
                 return data;
             }

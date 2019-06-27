@@ -1,18 +1,22 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
 using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Core.Extensions;
 using WalkingTec.Mvvm.Mvc;
 using WalkingTec.Mvvm.Mvc.Admin.ViewModels.ActionLogVMs;
+using WalkingTec.Mvvm.Mvc.Auth;
 
 namespace WalkingTec.Mvvm.Admin.Api
 {
-
     [ActionDescription("日志管理")]
     [ApiController]
-    [Route("api/_ActionLog")]
+    [Route("api/_[controller]")]
+    [WTMAuthorize]
 	public class ActionLogController : BaseApiController
     {
         [ActionDescription("搜索")]

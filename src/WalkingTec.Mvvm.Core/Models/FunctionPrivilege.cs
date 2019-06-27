@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Newtonsoft.Json;
 
 namespace WalkingTec.Mvvm.Core
 {
@@ -20,6 +21,7 @@ namespace WalkingTec.Mvvm.Core
         public Guid MenuItemId { get; set; }
 
         [Display(Name = "菜单项")]
+        [JsonIgnore]
         public FrameworkMenu MenuItem { get; set; }
 
         [Display(Name = "允许" )]

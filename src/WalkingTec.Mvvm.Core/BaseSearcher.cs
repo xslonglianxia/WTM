@@ -62,22 +62,12 @@ namespace WalkingTec.Mvvm.Core
         /// </summary>
         [JsonIgnore]
         public ISessionService Session { get; set; }
+
         /// <summary>
         /// 当前登录人信息
         /// </summary>
         [JsonIgnore]
-        public LoginUserInfo LoginUserInfo
-        {
-            get
-            {
-                return Session?.Get<LoginUserInfo>("UserInfo");
-            }
-            set
-            {
-                Session?.Set("UserInfo", value);
-            }
-
-        }
+        public LoginUserInfo LoginUserInfo { get; set; }
 
         #region 未使用
         /// <summary>
@@ -165,6 +155,7 @@ namespace WalkingTec.Mvvm.Core
             FC = vm.FC;
             this.DC = vm.DC;
             this.Session = vm.Session;
+            this.LoginUserInfo = vm.LoginUserInfo;
             //var CurrentCS = vm.CurrentCS;
             //var CreatorAssembly = vm.CreatorAssembly;
         }

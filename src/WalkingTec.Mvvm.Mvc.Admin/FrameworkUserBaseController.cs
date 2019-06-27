@@ -1,14 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
 using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Core.Extensions;
 using WalkingTec.Mvvm.Mvc;
 using WalkingTec.Mvvm.Mvc.Admin.ViewModels.FrameworkUserVms;
+using WalkingTec.Mvvm.Mvc.Auth;
 
 namespace WalkingTec.Mvvm.Admin.Api
 {
@@ -16,6 +17,7 @@ namespace WalkingTec.Mvvm.Admin.Api
     [ActionDescription("用户管理")]
     [ApiController]
     [Route("api/_FrameworkUserBase")]
+    [WTMAuthorize]
 	public class FrameworkUserController : BaseApiController
     {
         [ActionDescription("搜索")]

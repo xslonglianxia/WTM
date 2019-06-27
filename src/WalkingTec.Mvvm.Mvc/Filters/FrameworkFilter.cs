@@ -39,7 +39,8 @@ namespace WalkingTec.Mvvm.Mvc.Filters
             var postDes = ctrlActDesc.MethodInfo.GetCustomAttributes(typeof(HttpPostAttribute), false).Cast<HttpPostAttribute>().FirstOrDefault();
 
             var crossDomain = ctrlActDesc.MethodInfo.GetCustomAttributes(typeof(CrossDomainAttribute), false).FirstOrDefault() as CrossDomainAttribute;
-            if (crossDomain == null) {
+            if (crossDomain == null)
+            {
                 crossDomain = ctrlActDesc.ControllerTypeInfo.GetCustomAttributes(typeof(CrossDomainAttribute), false).FirstOrDefault() as CrossDomainAttribute;
             }
             if (crossDomain != null)
@@ -71,6 +72,8 @@ namespace WalkingTec.Mvvm.Mvc.Filters
                 {
                     var model = item.Value as BaseVM;
                     model.Session = new SessionServiceProvider(context.HttpContext.Session);
+                    model.Cache = ctrl.Cache;
+                    model.LoginUserInfo = ctrl.LoginUserInfo;
                     model.DC = ctrl.DC;
                     model.MSD = new ModelStateServiceProvider(ctrl.ModelState);
                     model.FC = new Dictionary<string, object>();
@@ -102,14 +105,11 @@ namespace WalkingTec.Mvvm.Mvc.Filters
                                 model.FC.Add(key, f[key]);
                             }
                         }
-                        if (context.HttpContext.Request.QueryString != null)
+                        foreach (var key in context.HttpContext.Request.Query.Keys)
                         {
-                            foreach (var key in context.HttpContext.Request.Query.Keys)
+                            if (model.FC.Keys.Contains(key) == false)
                             {
-                                if (model.FC.Keys.Contains(key) == false)
-                                {
-                                    model.FC.Add(key, context.HttpContext.Request.Query[key]);
-                                }
+                                model.FC.Add(key, context.HttpContext.Request.Query[key]);
                             }
                         }
                     }
@@ -129,8 +129,6 @@ namespace WalkingTec.Mvvm.Mvc.Filters
                         }
 
                     }
-
-
 
                     //如果ViewModel T继承自IBaseBatchVM<BaseVM>，则自动为其中的ListVM和EditModel初始化数据
                     if (model is IBaseBatchVM<BaseVM>)

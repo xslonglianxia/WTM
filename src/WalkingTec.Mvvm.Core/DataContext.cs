@@ -1,8 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.Extensions.Logging;
-using MySql.Data.MySqlClient;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -10,7 +6,14 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+using MySql.Data.MySqlClient;
+
 using WalkingTec.Mvvm.Core.Extensions;
+using WalkingTec.Mvvm.Core.Models;
 
 namespace WalkingTec.Mvvm.Core
 {
@@ -30,6 +33,7 @@ namespace WalkingTec.Mvvm.Core
         public DbSet<FrameworkGroup> BaseFrameworkGroups { get; set; }
         public DbSet<ActionLog> BaseActionLogs { get; set; }
         public DbSet<FrameworkArea> BaseFrameworkAreas { get; set; }
+        public DbSet<PersistedGrant> PersistedGrants { get; set; }
 
 
 
@@ -74,7 +78,7 @@ namespace WalkingTec.Mvvm.Core
 
         public IDataContext CreateNew()
         {
-           return (IDataContext)this.GetType().GetConstructor(new Type[] { typeof(string), typeof(DBTypeEnum) }).Invoke(new object[] { CSName, DBType }); ;
+            return (IDataContext)this.GetType().GetConstructor(new Type[] { typeof(string), typeof(DBTypeEnum) }).Invoke(new object[] { CSName, DBType }); ;
         }
 
         public IDataContext ReCreate()
@@ -295,7 +299,7 @@ namespace WalkingTec.Mvvm.Core
             switch (DBType)
             {
                 case DBTypeEnum.SqlServer:
-                    optionsBuilder.UseSqlServer(CSName,op=>op.UseRowNumberForPaging());
+                    optionsBuilder.UseSqlServer(CSName, op => op.UseRowNumberForPaging());
                     break;
                 case DBTypeEnum.MySql:
                     optionsBuilder.UseMySql(CSName);
@@ -347,7 +351,7 @@ namespace WalkingTec.Mvvm.Core
                 if (Set<FrameworkMenu>().Any() == false)
                 {
                     var systemManagement = GetFolderMenu("系统管理", new List<FrameworkRole> { adminRole }, null);
-                    var logList = IsSpa ? GetMenu2(AllModules,"ActionLog", new List<FrameworkRole> { adminRole }, null, 1) : GetMenu(AllModules, "_Admin", "ActionLog", "Index", new List<FrameworkRole> { adminRole }, null, 1);
+                    var logList = IsSpa ? GetMenu2(AllModules, "ActionLog", new List<FrameworkRole> { adminRole }, null, 1) : GetMenu(AllModules, "_Admin", "ActionLog", "Index", new List<FrameworkRole> { adminRole }, null, 1);
                     var userList = IsSpa ? GetMenu2(AllModules, "FrameworkUser", new List<FrameworkRole> { adminRole }, null, 2) : GetMenu(AllModules, "_Admin", "FrameworkUser", "Index", new List<FrameworkRole> { adminRole }, null, 2);
                     var roleList = IsSpa ? GetMenu2(AllModules, "FrameworkRole", new List<FrameworkRole> { adminRole }, null, 3) : GetMenu(AllModules, "_Admin", "FrameworkRole", "Index", new List<FrameworkRole> { adminRole }, null, 3);
                     var groupList = IsSpa ? GetMenu2(AllModules, "FrameworkGroup", new List<FrameworkRole> { adminRole }, null, 4) : GetMenu(AllModules, "_Admin", "FrameworkGroup", "Index", new List<FrameworkRole> { adminRole }, null, 4);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Caching.Distributed;
 using WalkingTec.Mvvm.Core;
 
 namespace WalkingTec.Mvvm.Core
@@ -56,6 +57,10 @@ namespace WalkingTec.Mvvm.Core
         //Configs Config { get; set; } 
 
         ISessionService Session { get; set; }
+
+        IDistributedCache Cache { get; set; }
+
+        LoginUserInfo LoginUserInfo { get; set; }
         #endregion
 
         #region Event

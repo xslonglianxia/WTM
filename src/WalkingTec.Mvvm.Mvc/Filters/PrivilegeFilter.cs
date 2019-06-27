@@ -60,6 +60,7 @@ namespace WalkingTec.Mvvm.Mvc.Filters
             var isPublic = ad.MethodInfo.IsDefined(typeof(PublicAttribute), false) || ad.ControllerTypeInfo.IsDefined(typeof(PublicAttribute), false);
             var isAllRights = ad.MethodInfo.IsDefined(typeof(AllRightsAttribute), false) || ad.ControllerTypeInfo.IsDefined(typeof(AllRightsAttribute), false);
             var isDebug = ad.MethodInfo.IsDefined(typeof(DebugOnlyAttribute), false) || ad.ControllerTypeInfo.IsDefined(typeof(DebugOnlyAttribute), false);
+            isAllRights = isPublic == true ? true : isAllRights;
             if (controller.ConfigInfo.IsFilePublic == true)
             {
                 if (ad.ControllerName == "_Framework" && (ad.MethodInfo.Name == "GetFile" || ad.MethodInfo.Name == "ViewFile"))
@@ -87,33 +88,33 @@ namespace WalkingTec.Mvvm.Mvc.Filters
                 return;
             }
 
-            if (isPublic == true)
-            {
-                base.OnActionExecuting(context);
-                return;
-            }
+            //if (isPublic == true)
+            //{
+            //    base.OnActionExecuting(context);
+            //    return;
+            //}
 
-            if (controller.LoginUserInfo == null)
-            {
-                var publicMenu = controller.GlobaInfo.AllMenus
-                               .Where(x => x.Url != null
-                                   && x.Url.ToLower() == "/" + ad.ControllerName.ToLower() + "/" + ad.ActionName
-                                   && x.IsPublic == true)
-                               .FirstOrDefault();
-                if (publicMenu == null)
-                {
-                    if (controller is BaseController c)
-                    {
-                        context.Result = new ContentResult { Content = $"<script>window.location.href = '/Login/Login?rd={HttpUtility.UrlEncode(controller.BaseUrl)}'</script>", ContentType = "text/html" };
-                    }
-                    else if (controller is ControllerBase c2)
-                    {
-                        context.Result = c2.Forbid();
-                    }
-                    return;
-                }
-            }
-            else
+            //if (controller.LoginUserInfo == null)
+            //{
+            //    var publicMenu = controller.GlobaInfo.AllMenus
+            //                   .Where(x => x.Url != null
+            //                       && x.Url.ToLower() == "/" + ad.ControllerName.ToLower() + "/" + ad.ActionName
+            //                       && x.IsPublic == true)
+            //                   .FirstOrDefault();
+            //    if (publicMenu == null)
+            //    {
+            //        if (controller is BaseController c)
+            //        {
+            //            context.Result = new ContentResult { Content = $"<script>window.location.href = '/Login/Login?rd={HttpUtility.UrlEncode(controller.BaseUrl)}'</script>", ContentType = "text/html" };
+            //        }
+            //        else if (controller is ControllerBase c2)
+            //        {
+            //            context.Result = c2.Forbid();
+            //        }
+            //        return;
+            //    }
+            //}
+            //else
             {
                 if (isAllRights == false)
                 {

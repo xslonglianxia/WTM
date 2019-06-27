@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,7 @@ using WalkingTec.Mvvm.Mvc;
 
 namespace WalkingTec.Mvvm.Demo.Controllers
 {
+    [Authorize]
     public class HomeController : BaseController
     {
         [AllRights]

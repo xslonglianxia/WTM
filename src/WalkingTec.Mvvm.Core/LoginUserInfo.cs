@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-
+using Newtonsoft.Json;
 
 namespace WalkingTec.Mvvm.Core
 {
     /// <summary>
     /// 用户登录信息，需要保存在Session中，所以使用Serializable标记
     /// </summary>
-    public class LoginUserInfo 
+    public class LoginUserInfo
     {
         public Guid Id { get; set; }
         /// <summary>
@@ -27,7 +27,7 @@ namespace WalkingTec.Mvvm.Core
 
         public List<FrameworkGroup> Groups { get; set; }
 
-        public Dictionary<string,object> Attributes { get; set; }
+        public Dictionary<string, object> Attributes { get; set; }
         /// <summary>
         /// 用户的页面权限列表
         /// </summary>
@@ -38,6 +38,7 @@ namespace WalkingTec.Mvvm.Core
         public List<DataPrivilege> DataPrivileges { get; set; }
 
         private GlobalData _globalData;
+        [JsonIgnore]
         private GlobalData GlobalData
         {
             get
@@ -51,6 +52,7 @@ namespace WalkingTec.Mvvm.Core
         }
 
         private Configs _configs;
+        [JsonIgnore]
         private Configs Configs
         {
             get

@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Runtime.Loader;
 
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -19,12 +21,14 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.SpaServices.StaticFiles;
 using Microsoft.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyModel;
 using Microsoft.Extensions.DependencyModel.Resolution;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.IdentityModel.Tokens;
 
 using Newtonsoft.Json;
 
@@ -32,6 +36,7 @@ using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Core.Extensions;
 using WalkingTec.Mvvm.Core.FDFS;
 using WalkingTec.Mvvm.Core.Implement;
+using WalkingTec.Mvvm.Mvc.Auth;
 using WalkingTec.Mvvm.Mvc.Binders;
 using WalkingTec.Mvvm.Mvc.Filters;
 using WalkingTec.Mvvm.Mvc.Json;
@@ -89,7 +94,6 @@ namespace WalkingTec.Mvvm.Mvc
             });
             SetupDFS(con);
 
-
             var mvc = gd.AllAssembly.Where(x => x.ManifestModule.Name == "WalkingTec.Mvvm.Mvc.dll").FirstOrDefault();
             var admin = gd.AllAssembly.Where(x => x.ManifestModule.Name == "WalkingTec.Mvvm.Mvc.Admin.dll").FirstOrDefault();
             services.AddMvc(options =>
@@ -138,7 +142,6 @@ namespace WalkingTec.Mvvm.Mvc
                 };
             });
 
-
             services.Configure<RazorViewEngineOptions>(options =>
             {
                 if (mvc != null)
@@ -168,6 +171,42 @@ namespace WalkingTec.Mvvm.Mvc
             });
 
             services.AddSingleton<IUIService, DefaultUIService>();
+
+            #region Jwt Authorize
+
+            services.AddSingleton<CookieAuthMiddleware>();
+            services.AddSingleton<IAuthService, AuthService>();
+
+            JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
+            // Bearer
+            services.AddAuthentication().AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = con.JwtOptions.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = con.JwtOptions.Audience,
+                    ValidateIssuerSigningKey = false,
+                    IssuerSigningKey = con.JwtOptions.SymmetricSecurityKey,
+                    ValidateLifetime = true
+                };
+            });
+
+            // Cookie
+            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                    .AddCookie(options =>
+                    {
+                        options.LoginPath = con.JwtOptions.LoginUrl;
+                        options.Cookie.Name = $"{con.CookiePre}.access_token";
+                        options.Cookie.Path = "/";
+                        options.TicketDataFormat = new JwtCookieDataFormat(con.JwtOptions);
+                        options.ClaimsIssuer = con.JwtOptions.Issuer;
+                    });
+
+            #endregion
+
             GlobalServices.SetServiceProvider(services.BuildServiceProvider());
             return services;
         }
@@ -185,6 +224,18 @@ namespace WalkingTec.Mvvm.Mvc
             {
                 throw new InvalidOperationException("Can not find GlobalData service, make sure you call AddFrameworkService at ConfigService");
             }
+
+            app.UseExceptionHandler("/_Framework/Error");
+
+            app.UseStaticFiles();
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                RequestPath = new PathString("/_js"),
+                FileProvider = new EmbeddedFileProvider(
+                    typeof(_CodeGenController).GetTypeInfo().Assembly,
+                    "WalkingTec.Mvvm.Mvc")
+            });
+
             app.UseResponseCaching();
             app.Use(async (context, next) =>
             {
@@ -200,17 +251,17 @@ namespace WalkingTec.Mvvm.Mvc
                 }
             });
 
-            app.UseExceptionHandler("/_Framework/Error");
+            #region Jwt Authorize
 
-            app.UseStaticFiles();
-            app.UseStaticFiles(new StaticFileOptions
-            {
-                RequestPath = new PathString("/_js"),
-                FileProvider = new EmbeddedFileProvider(
-                    typeof(_CodeGenController).GetTypeInfo().Assembly,
-                    "WalkingTec.Mvvm.Mvc")
-            });
+            app.UseAuthentication();
+            //app.UseWTMAuthentication();
+
+            #endregion
+
             app.UseSession();
+
+            //app.UseCookieAuth();
+
             if (customRoutes != null)
             {
                 app.UseMvc(customRoutes);
@@ -240,7 +291,7 @@ namespace WalkingTec.Mvvm.Mvc
                         {
                             u = lg.GetPathByAction(a.MethodName, m.ClassName, new { id = 0, area = m.Area?.AreaName });
                         }
-                        if (u!= null && u.EndsWith("/0"))
+                        if (u != null && u.EndsWith("/0"))
                         {
                             u = u.Substring(0, u.Length - 2);
                             u = u + "/{id}";
@@ -249,7 +300,6 @@ namespace WalkingTec.Mvvm.Mvc
                     }
                 }
             }
-
 
             var test = app.ApplicationServices.GetService<ISpaStaticFileProvider>();
             var cs = configs.ConnectionStrings.Select(x => x.Value);
@@ -282,25 +332,28 @@ namespace WalkingTec.Mvvm.Mvc
 
             var controllers = GetAllControllers(gd.AllAssembly);
 
-            gd.AllAccessUrls = GetAllAccessUrls(controllers);
+            var allAccessUrls = GetAllAccessUrls(controllers);
+            gd.AllAccessUrls = allAccessUrls.Select(x => x.Url).ToList();
+            gd.AllPublicUrls = allAccessUrls.Where(x => x.Public == true).Select(x => x.Url).ToArray();
+
             gd.AllModule = GetAllModules(controllers);
 
             gd.SetMenuGetFunc(() =>
             {
                 var menus = new List<FrameworkMenu>();
-                var cache = GlobalServices.GetService<IMemoryCache>();
+                var cache = GlobalServices.GetService<IDistributedCache>();
                 var menuCacheKey = "FFMenus";
-                if (cache.TryGetValue(menuCacheKey, out List<FrameworkMenu> rv) == false)
-                {
-                    var data = GetAllMenus(gd.AllModule, gd.DataContextCI);
-                    cache.Set(menuCacheKey, data);
-                    menus = data;
-                }
-                else
+                var rv = cache.Get<List<FrameworkMenu>>(menuCacheKey);
+                if(rv!=null&&rv.Count>0)
                 {
                     menus = rv;
                 }
-
+                else
+                {
+                    var data = GetAllMenus(gd.AllModule, gd.DataContextCI);
+                    cache.Add(menuCacheKey, data);
+                    menus = data;
+                }
                 return menus;
             });
             return gd;
@@ -608,9 +661,9 @@ namespace WalkingTec.Mvvm.Mvc
         /// </summary>
         /// <param name="controllers"></param>
         /// <returns></returns>
-        private static List<string> GetAllAccessUrls(List<Type> controllers)
+        private static List<PublicUrl> GetAllAccessUrls(List<Type> controllers)
         {
-            var rv = new List<string>();
+            var rv = new List<PublicUrl>();
             foreach (var ctrl in controllers)
             {
                 if (typeof(BaseApiController).IsAssignableFrom(ctrl))
@@ -621,14 +674,14 @@ namespace WalkingTec.Mvvm.Mvc
                 var ControllerName = ctrl.Name.Replace("Controller", string.Empty);
                 var includeAll = false;
                 //获取controller上标记的ActionDescription属性的值
-                var attrs = ctrl.GetCustomAttributes(typeof(AllRightsAttribute), false);
-                var attrs2 = ctrl.GetCustomAttributes(typeof(PublicAttribute), false);
+                var allRightsAttrs = ctrl.GetCustomAttributes(typeof(AllRightsAttribute), false);
+                var publicAttrs = ctrl.GetCustomAttributes(typeof(PublicAttribute), false);
                 var areaAttr = ctrl.GetCustomAttribute(typeof(AreaAttribute), false);
                 if (areaAttr != null)
                 {
                     area = (areaAttr as AreaAttribute).RouteValue;
                 }
-                if (attrs.Length > 0 || attrs2.Length > 0)
+                if (allRightsAttrs.Length > 0 || publicAttrs.Length > 0)
                 {
                     includeAll = true;
                 }
@@ -646,14 +699,14 @@ namespace WalkingTec.Mvvm.Mvc
                     if (postAttr.Length == 0)
                     {
                         ActionName = method.Name;
-                        var url = ControllerName + "/" + ActionName;
+                        var url = Path.Combine(ControllerName, ActionName);
                         if (!string.IsNullOrEmpty(area))
                         {
-                            url = area + "/" + url;
+                            url = Path.Combine(area, url);
                         }
                         if (includeAll == true)
                         {
-                            rv.Add(url);
+                            rv.Add(new PublicUrl() { Url = url, AllRight = allRightsAttrs.Length > 0, Public = publicAttrs.Length > 0 });
                         }
                         else
                         {
@@ -661,7 +714,7 @@ namespace WalkingTec.Mvvm.Mvc
                             var attrs4 = method.GetCustomAttributes(typeof(PublicAttribute), false);
                             if (attrs3.Length > 0 || attrs4.Length > 0)
                             {
-                                rv.Add(url);
+                                rv.Add(new PublicUrl() { Url = url, AllRight = attrs3.Length > 0, Public = attrs4.Length > 0 });
                             }
                         }
                     }
@@ -671,17 +724,18 @@ namespace WalkingTec.Mvvm.Mvc
                 {
                     var postAttr = method.GetCustomAttributes(typeof(HttpPostAttribute), false);
                     //找到post的方法且没有同名的非post的方法，添加到controller的action列表里
-                    if (postAttr.Length > 0 && !rv.Contains(ControllerName + "/" + method.Name))
+                    if (postAttr.Length > 0 && !(rv.Count(x => x.Url.Contains(Path.Combine(ControllerName, method.Name))) > 0))
                     {
                         ActionName = method.Name;
-                        var url = ControllerName + "/" + ActionName;
+
+                        var url = Path.Combine(ControllerName, ActionName);
                         if (!string.IsNullOrEmpty(area))
                         {
-                            url = area + "/" + url;
+                            url = Path.Combine(area, url);
                         }
                         if (includeAll == true)
                         {
-                            rv.Add(url);
+                            rv.Add(new PublicUrl() { Url = url, AllRight = allRightsAttrs.Length > 0, Public = publicAttrs.Length > 0 });
                         }
                         else
                         {
@@ -689,12 +743,13 @@ namespace WalkingTec.Mvvm.Mvc
                             var attrs6 = method.GetCustomAttributes(typeof(PublicAttribute), false);
                             if (attrs5.Length > 0 || attrs6.Length > 0)
                             {
-                                rv.Add(url);
+                                rv.Add(new PublicUrl() { Url = url, AllRight = attrs5.Length > 0, Public = attrs6.Length > 0 });
                             }
                         }
                     }
                 }
             }
+            rv = rv.OrderBy(x => x.Url).ToList();
             return rv;
         }
 
@@ -866,5 +921,12 @@ namespace WalkingTec.Mvvm.Mvc
 
         }
 
+    }
+
+    public class PublicUrl
+    {
+        public string Url { get; set; }
+        public bool AllRight { get; set; }
+        public bool Public { get; set; }
     }
 }

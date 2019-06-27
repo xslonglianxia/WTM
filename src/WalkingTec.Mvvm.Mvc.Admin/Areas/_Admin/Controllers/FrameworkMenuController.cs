@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
@@ -163,7 +164,7 @@ namespace WalkingTec.Mvvm.Mvc.Admin.Controllers
         [ActionDescription("刷新菜单")]
         public ActionResult RefreshMenu()
         {
-            var cache = GlobalServices.GetService<IMemoryCache>();
+            var cache = GlobalServices.GetService<IDistributedCache>();
             cache.Remove("FFMenus");
             return FFResult().Alert("操作成功");
         }

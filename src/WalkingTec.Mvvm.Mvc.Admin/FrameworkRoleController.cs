@@ -1,18 +1,23 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
 using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Core.Extensions;
 using WalkingTec.Mvvm.Mvc;
 using WalkingTec.Mvvm.Mvc.Admin.ViewModels.FrameworkRoleVMs;
+using WalkingTec.Mvvm.Mvc.Auth;
 
 namespace WalkingTec.Mvvm.Admin.Api
 {
 
     [ActionDescription("角色管理")]
     [ApiController]
-    [Route("api/_FrameworkRole")]
+    [Route("api/_[controller]")]
+    [WTMAuthorize]
 	public class FrameworkRoleController : BaseApiController
     {
         [ActionDescription("搜索")]

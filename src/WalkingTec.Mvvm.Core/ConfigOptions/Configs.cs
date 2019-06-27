@@ -441,6 +441,22 @@ namespace WalkingTec.Mvvm.Core
 
         #endregion
 
+        #region JwtOptions
+        public JwtOptions _jwtOptions { get; set; }
+
+        public JwtOptions JwtOptions
+        {
+            get
+            {
+                return _jwtOptions;
+            }
+            set
+            {
+                _jwtOptions = value;
+            }
+        }
+
+        #endregion
 
     }
 }

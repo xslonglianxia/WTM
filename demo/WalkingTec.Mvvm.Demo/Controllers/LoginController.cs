@@ -3,6 +3,7 @@ using System.Web;
 using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Mvc;
 using WalkingTec.Mvvm.Demo.ViewModels.HomeVMs;
+using Microsoft.AspNetCore.Http;
 
 namespace WalkingTec.Mvvm.Demo.Controllers
 {
@@ -32,6 +33,12 @@ namespace WalkingTec.Mvvm.Demo.Controllers
             }
             else
             {
+                // 在 cookie 中写入 access_token
+                HttpContext.Response.Cookies.Append($"{ConfigInfo.CookiePre}.access_token", vm.Token.AccessToken, new CookieOptions()
+                {
+                    HttpOnly = true
+                });
+
                 LoginUserInfo = user;
                 string url = "";
                 if (!string.IsNullOrEmpty(vm.Redirect))

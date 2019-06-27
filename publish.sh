@@ -4,7 +4,7 @@
 basepath=$(cd `dirname $0`; pwd)
 cd $basepath
 
-arrProjs=("WalkingTec.Mvvm.ApiDemo" "WalkingTec.Mvvm.Demo")
+arrProjs=("WalkingTec.Mvvm.ReactDemo" "WalkingTec.Mvvm.Demo")
 arrProjs1=("WalkingTec.Mvvm.Doc")
 configuration="Release"
 # win-x64 linux-x64

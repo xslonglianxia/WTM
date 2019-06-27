@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.Extensions.Caching.Distributed;
+
 using WalkingTec.Mvvm.Core;
 
 namespace WalkingTec.Mvvm.Mvc
@@ -13,6 +12,8 @@ namespace WalkingTec.Mvvm.Mvc
         string CurrentCS { get; set; }
         IDataContext DC { get; set; }
         LoginUserInfo LoginUserInfo { get; set; }
+
+        IDistributedCache Cache { get; }
 
         string BaseUrl { get; set; }
 

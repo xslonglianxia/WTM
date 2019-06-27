@@ -1,22 +1,25 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+
 using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Core.Extensions;
 using WalkingTec.Mvvm.Mvc;
 using WalkingTec.Mvvm.Mvc.Admin.ViewModels.FrameworkMenuVMs;
+using WalkingTec.Mvvm.Mvc.Auth;
 
 namespace WalkingTec.Mvvm.Admin.Api
 {
 
     [ActionDescription("菜单管理")]
     [ApiController]
-    [Route("api/_FrameworkMenu")]
+    [Route("api/_[controller]")]
+    [WTMAuthorize]
 	public class FrameworkMenuController : BaseApiController
     {
         [ActionDescription("搜索")]
@@ -156,7 +159,7 @@ namespace WalkingTec.Mvvm.Admin.Api
         [HttpGet("RefreshMenu")]
         public ActionResult RefreshMenu()
         {
-            var cache = GlobalServices.GetService<IMemoryCache>();
+            var cache = GlobalServices.GetService<IDistributedCache>();
             cache.Remove("FFMenus");
             return Ok("操作成功");
         }

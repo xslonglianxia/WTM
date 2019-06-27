@@ -149,7 +149,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.App" version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.App" version="2.2.0" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -163,4 +163,7 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Auth\" />
+  </ItemGroup>
 </Project>

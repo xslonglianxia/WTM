@@ -4,11 +4,13 @@ using System.Linq;
 using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Core.Extensions;
 using WalkingTec.Mvvm.Demo.Models;
+using WalkingTec.Mvvm.Mvc.Auth;
 
 namespace WalkingTec.Mvvm.Demo.ViewModels.HomeVMs
 {
     public class LoginVM : BaseVM
     {
+        public Token Token { get; set; }
 
         [Display(Name = "账号")]
         [Required(AllowEmptyStrings = false)]
@@ -31,7 +33,7 @@ namespace WalkingTec.Mvvm.Demo.ViewModels.HomeVMs
         {
             //根据用户名和密码查询用户
             var user = DC.Set<FrameworkUserBase>()
-                .Include(x => x.UserRoles).Include(x=>x.UserGroups)
+                .Include(x => x.UserRoles).Include(x => x.UserGroups)
                 .Where(x => x.ITCode.ToLower() == ITCode.ToLower() && x.Password == Utils.GetMD5String(Password) && x.IsValid)
                 .SingleOrDefault();
 
@@ -41,11 +43,12 @@ namespace WalkingTec.Mvvm.Demo.ViewModels.HomeVMs
                 MSD.AddModelError("", "登录失败");
                 return null;
             }
+
             var roleIDs = user.UserRoles.Select(x => x.RoleId).ToList();
             var groupIDs = user.UserGroups.Select(x => x.GroupId).ToList();
             //查找登录用户的数据权限
             var dpris = DC.Set<DataPrivilege>()
-                .Where(x => x.UserId == user.ID ||  ( x.GroupId != null && groupIDs.Contains(x.GroupId.Value)))
+                .Where(x => x.UserId == user.ID || (x.GroupId != null && groupIDs.Contains(x.GroupId.Value)))
                 .ToList();
             //生成并返回登录用户信息
             LoginUserInfo rv = new LoginUserInfo
@@ -58,6 +61,11 @@ namespace WalkingTec.Mvvm.Demo.ViewModels.HomeVMs
                 Groups = DC.Set<FrameworkGroup>().Where(x => user.UserGroups.Select(y => y.GroupId).Contains(x.ID)).ToList(),
                 DataPrivileges = dpris
             };
+
+            // generate token
+            var authService = GlobalServices.GetRequiredService<IAuthService>();
+            Token = authService.Issue(rv).Result;
+
             if (ignorePris == false)
             {
                 //查找登录用户的页面权限

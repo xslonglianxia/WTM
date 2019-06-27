@@ -1,11 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
 using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Mvc;
-using WalkingTec.Mvvm.Core.Extensions;
+using WalkingTec.Mvvm.Mvc.Auth;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -83,17 +87,28 @@ namespace WalkingTec.Mvvm.Admin.Api
                 .Where(x => x.MethodName != null)
                 .Select(x => x.Url)
                 );
-            urls.AddRange(GlobaInfo.AllModule.Where(x=>x.IsApi == true).SelectMany(x=>x.Actions).Where(x=>(x.IgnorePrivillege == true || x.Module.IgnorePrivillege == true) && x.Url != null).Select(x=>x.Url));
+            urls.AddRange(GlobaInfo.AllModule.Where(x => x.IsApi == true).SelectMany(x => x.Actions).Where(x => (x.IgnorePrivillege == true || x.Module.IgnorePrivillege == true) && x.Url != null).Select(x => x.Url));
             forapi.Attributes = new Dictionary<string, object>();
             forapi.Attributes.Add("Menus", menus);
             forapi.Attributes.Add("Actions", urls);
+
+            // generate token
+            var authService = GlobalServices.GetRequiredService<IAuthService>();
+            var token = authService.Issue(rv).Result;
+
+            // 在 cookie 中写入 access_token
+            HttpContext.Response.Cookies.Append($"{ConfigInfo.CookiePre}.access_token", token.AccessToken, new CookieOptions()
+            {
+                HttpOnly = true
+            });
+
             return Ok(forapi);
         }
 
         [HttpGet("CheckLogin/{id}")]
         public IActionResult CheckLogin(Guid id)
         {
-            if(LoginUserInfo?.Id != id)
+            if (LoginUserInfo?.Id != id)
             {
                 return BadRequest();
             }

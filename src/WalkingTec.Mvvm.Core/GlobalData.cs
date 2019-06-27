@@ -20,9 +20,14 @@ namespace WalkingTec.Mvvm.Core
         public ConstructorInfo DataContextCI { get; set; }
 
         /// <summary>
-        /// 可访问的url地址
+        /// 可访问的url地址包括 Public、AllRight
         /// </summary>
         public List<string> AllAccessUrls { get; set; }
+
+        /// <summary>
+        /// 所有公开的Url地址
+        /// </summary>
+        public string[] AllPublicUrls { get; set; }
 
         /// <summary>
         /// 模块
